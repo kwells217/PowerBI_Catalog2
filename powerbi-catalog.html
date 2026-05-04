@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power BI Catalog</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --surface: #111827; --surface2: #1a2235;
+    --border: #1e2d45; --accent: #f0b429; --accent2: #3b82f6;
+    --text: #e2e8f0; --muted: #64748b; --success: #10b981; --error: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh;
+    background-image: radial-gradient(ellipse at 20% 0%, #1a2d5a22 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, #f0b42911 0%, transparent 60%);
+  }
+  header {
+    border-bottom: 1px solid var(--border); padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(17,24,39,0.8); backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: var(--accent); }
+  .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #f97316); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .status-badge { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); }
+  .status-badge.connected { border-color: var(--success); color: var(--success); }
+  main { max-width: 1200px; margin: 0 auto; padding: 32px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; max-width: 600px; margin: 40px auto; }
+  .auth-card h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .auth-card p { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+  .field-group { margin-bottom: 16px; }
+  label { display: block; font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+  input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; font-family: 'IBM Plex Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+  input:focus { border-color: var(--accent2); }
+  input::placeholder { color: var(--muted); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #f97316); color: #0a0e1a; }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent2); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .error-msg { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 14px 16px; color: #fca5a5; font-size: 13px; margin-top: 16px; display: none; }
+
+  /* Device code box */
+  .device-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-top: 24px; text-align: center; display: none; }
+  .device-code { font-family: 'IBM Plex Mono', monospace; font-size: 32px; font-weight: 600; color: var(--accent); letter-spacing: 0.15em; margin: 16px 0; }
+  .device-url { font-size: 14px; color: var(--accent2); margin-bottom: 20px; }
+  .device-url a { color: var(--accent2); }
+  .device-instructions { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+  .poll-status { font-size: 13px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 12px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 6px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .dashboard { display: none; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), transparent); }
+  .stat-label { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-value { font-size: 28px; font-weight: 600; margin-top: 6px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; }
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .toolbar input { flex: 1; min-width: 200px; }
+  .toolbar select { width: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+  .table-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; }
+  .tag { font-size: 11px; font-family: 'IBM Plex Mono', monospace; padding: 2px 8px; border-radius: 4px; background: var(--surface2); color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 16px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(59,130,246,0.04); }
+  .cell-mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .cell-muted { color: var(--muted); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+  .pill-blue { background: rgba(59,130,246,0.15); color: #93c5fd; }
+  .pill-green { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .pill-yellow { background: rgba(240,180,41,0.15); color: #fcd34d; }
+  .pill-gray { background: rgba(100,116,139,0.15); color: var(--muted); }
+  .copy-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 11px; padding: 2px 8px; cursor: pointer; transition: all 0.15s; font-family: 'IBM Plex Mono', monospace; }
+  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--muted); gap: 14px; }
+  .empty { text-align: center; padding: 60px; color: var(--muted); font-size: 14px; }
+  .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 20px; cursor: pointer; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-icon">⚡</div>PBI Catalog</div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="status-badge" id="connStatus">Not connected</span>
+    <button class="btn btn-secondary" id="disconnectBtn" style="display:none;font-size:12px;padding:6px 12px;" onclick="disconnect()">Disconnect</button>
+  </div>
+</header>
+
+<main>
+
+<div id="authPanel" class="auth-card">
+  <h2>Connect to Power BI Service</h2>
+  <p>Sign in with your Microsoft account using device code flow. Your credentials go directly to Microsoft — never through this tool.</p>
+
+  <div class="field-group">
+    <label>Azure Function URL</label>
+    <input type="text" id="funcUrl" placeholder="https://your-function.azurewebsites.net/api/pbi-proxy" />
+  </div>
+  <div class="field-group">
+    <label>Function Key (if required)</label>
+    <input type="password" id="funcKey" placeholder="Your function key (optional)" />
+  </div>
+
+  <div class="error-msg" id="authError"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="loginBtn" onclick="startLogin()">⚡ Sign in with Microsoft</button>
+    <button class="btn btn-secondary" onclick="loadDemo()">🗂 Load Demo Data</button>
+  </div>
+
+  <!-- Device code UI -->
+  <div class="device-box" id="deviceBox">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Go to this URL in your browser:</div>
+    <div class="device-url"><a id="deviceUrl" href="#" target="_blank"></a></div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">Enter this code:</div>
+    <div class="device-code" id="deviceCode"></div>
+    <div class="device-instructions">Sign in with your Microsoft account and complete MFA as normal.<br>This page will update automatically once you're signed in.</div>
+    <div class="poll-status" id="pollStatus"><span class="spinner"></span> Waiting for sign in...</div>
+  </div>
+</div>
+
+<div id="dashboard" class="dashboard">
+  <div class="stats-row" id="statsRow"></div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('reports')">Reports</div>
+    <div class="tab" onclick="switchTab('datasets')">Datasets & Connections</div>
+    <div class="tab" onclick="switchTab('workspaces')">Workspaces</div>
+  </div>
+
+  <div class="tab-content active" id="tab-reports">
+    <div class="toolbar">
+      <input type="text" placeholder="Search reports..." oninput="filterTable('reportTable', this.value)">
+      <select onchange="filterByWs('reportTable', this.value)" id="wsFilterReport"><option value="">All Workspaces</option></select>
+      <button class="btn btn-secondary" onclick="exportCSV('reportTable','reports')">↓ Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">📊 Reports <span class="tag" id="reportCount">0</span></div>
+      <div id="reportTableWrap"></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-datasets">
+    <div class="toolbar">
+      <input type="text" placeholder="Search datasets..." oninput="filterTable('dsTable', this.value)">
+      <select onchange="filterByWs('dsTable', this.value)" id="wsFilterDs"><option value="">All Workspaces</option></select>
+      <button class="btn btn-secondary" onclick="exportCSV('dsTable','datasets')">↓ Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">🔌 Datasets & Connection Strings <span class="tag" id="dsCount">0</span></div>
+      <div id="dsTableWrap"></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-workspaces">
+    <div class="toolbar">
+      <button class="btn btn-secondary" onclick="exportCSV('wsTable','workspaces')">↓ Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">🗂 Workspaces <span class="tag" id="wsCount">0</span></div>
+      <div id="wsTableWrap"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+let FUNC_URL = '', FUNC_KEY = '', ACCESS_TOKEN = '';
+let allReports = [], allDatasets = [], allWorkspaces = [];
+let pollInterval = null;
+
+function getFuncUrl(action, params = {}) {
+  const url = new URL(FUNC_URL);
+  url.searchParams.set('action', action);
+  if (FUNC_KEY) url.searchParams.set('code', FUNC_KEY);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  return url.toString();
+}
+
+async function proxyGet(action, params = {}) {
+  const res = await fetch(getFuncUrl(action, params), {
+    headers: ACCESS_TOKEN ? { 'x-pbi-token': ACCESS_TOKEN } : {}
+  });
+  if (!res.ok) throw new Error(`Function error ${res.status}`);
+  return res.json();
+}
+
+async function startLogin() {
+  FUNC_URL = document.getElementById('funcUrl').value.trim();
+  FUNC_KEY = document.getElementById('funcKey').value.trim();
+  const errEl = document.getElementById('authError');
+  errEl.style.display = 'none';
+
+  if (!FUNC_URL) {
+    errEl.textContent = 'Please enter your Azure Function URL.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    document.getElementById('loginBtn').disabled = true;
+    const data = await proxyGet('startLogin');
+
+    // Show device code UI
+    document.getElementById('deviceBox').style.display = 'block';
+    document.getElementById('deviceUrl').textContent = data.verification_uri;
+    document.getElementById('deviceUrl').href = data.verification_uri;
+    document.getElementById('deviceCode').textContent = data.user_code;
+
+    // Start polling
+    pollInterval = setInterval(() => pollToken(data.sessionId), (data.interval || 5) * 1000);
+
+  } catch (e) {
+    errEl.textContent = 'Failed to start login: ' + e.message;
+    errEl.style.display = 'block';
+    document.getElementById('loginBtn').disabled = false;
+  }
+}
+
+async function pollToken(sessionId) {
+  try {
+    const data = await proxyGet('pollToken', { sessionId });
+    if (data.status === 'pending') return;
+    if (data.status === 'complete') {
+      clearInterval(pollInterval);
+      ACCESS_TOKEN = data.access_token;
+      document.getElementById('pollStatus').textContent = '✓ Signed in! Loading your Power BI data...';
+      await fetchAll();
+    }
+  } catch (e) {
+    clearInterval(pollInterval);
+    document.getElementById('pollStatus').textContent = '❌ Sign in failed: ' + e.message;
+    document.getElementById('loginBtn').disabled = false;
+  }
+}
+
+function switchTab(name) {
+  const tabs = ['reports', 'datasets', 'workspaces'];
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === name));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+async function fetchAll() {
+  document.getElementById('authPanel').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('connStatus').className = 'status-badge connected';
+  document.getElementById('connStatus').textContent = 'Connected';
+  document.getElementById('disconnectBtn').style.display = 'inline-flex';
+
+  showLoading('reportTableWrap'); showLoading('dsTableWrap'); showLoading('wsTableWrap');
+
+  try {
+    const wsData = await proxyGet('workspaces');
+    allWorkspaces = wsData.value || [];
+    allReports = []; allDatasets = [];
+
+    for (const ws of allWorkspaces) {
+      try {
+        const [rData, dData] = await Promise.all([
+          proxyGet('reports', { wsId: ws.id }),
+          proxyGet('datasets', { wsId: ws.id })
+        ]);
+        (rData.value || []).forEach(r => { r._workspace = ws.name; r._workspaceId = ws.id; allReports.push(r); });
+        (dData.value || []).forEach(d => { d._workspace = ws.name; d._workspaceId = ws.id; allDatasets.push(d); });
+      } catch (e) { /* skip inaccessible */ }
+    }
+
+    for (const ds of allDatasets) {
+      try {
+        const srcData = await proxyGet('datasources', { wsId: ds._workspaceId, dsId: ds.id });
+        ds._sources = srcData.value || [];
+      } catch (e) { ds._sources = []; }
+    }
+
+    renderAll();
+  } catch (e) {
+    ['reportTableWrap', 'dsTableWrap', 'wsTableWrap'].forEach(id => {
+      document.getElementById(id).innerHTML = `<div class="empty">❌ ${e.message}</div>`;
+    });
+  }
+}
+
+function showLoading(id) {
+  document.getElementById(id).innerHTML = `<div class="loading"><div class="spinner"></div><span>Loading...</span></div>`;
+}
+
+function renderAll() { renderStats(); renderReports(); renderDatasets(); renderWorkspaces(); populateWsFilters(); }
+
+function renderStats() {
+  const totalSources = allDatasets.reduce((a, d) => a + (d._sources || []).length, 0);
+  const types = new Set(allDatasets.flatMap(d => (d._sources || []).map(s => s.datasourceType)));
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Workspaces</div><div class="stat-value">${allWorkspaces.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Reports</div><div class="stat-value">${allReports.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Datasets</div><div class="stat-value">${allDatasets.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Data Sources</div><div class="stat-value">${totalSources}</div></div>
+    <div class="stat-card"><div class="stat-label">Source Types</div><div class="stat-value">${types.size}</div></div>`;
+}
+
+function renderReports() {
+  const rows = allReports.map(r => `
+    <tr data-ws="${r._workspace}" data-search="${(r.name + r._workspace).toLowerCase()}">
+      <td><strong>${r.name}</strong></td>
+      <td class="cell-muted">${r._workspace}</td>
+      <td class="cell-mono">${r.id}</td>
+      <td>${r.datasetId ? `<span class="pill pill-blue">${r.datasetId.slice(0, 8)}…</span>` : '<span class="pill pill-gray">—</span>'}</td>
+      <td><a href="${r.webUrl || '#'}" target="_blank" style="color:var(--accent2);font-size:12px;">${r.webUrl ? 'Open ↗' : '—'}</a></td>
+      <td><button class="copy-btn" onclick="copy('${r.id}')">Copy ID</button></td>
+    </tr>`).join('');
+  document.getElementById('reportCount').textContent = allReports.length;
+  document.getElementById('reportTableWrap').innerHTML = `
+    <table id="reportTable">
+      <thead><tr><th>Report Name</th><th>Workspace</th><th>Report ID</th><th>Dataset</th><th>URL</th><th></th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" class="empty">No reports found</td></tr>'}</tbody>
+    </table>`;
+}
+
+function connStr(src) {
+  if (!src.connectionDetails) return '—';
+  const d = src.connectionDetails;
+  const parts = [];
+  if (d.server) parts.push(`Server=${d.server}`);
+  if (d.database) parts.push(`Database=${d.database}`);
+  if (d.url) parts.push(`URL=${d.url}`);
+  if (d.path) parts.push(`Path=${d.path}`);
+  if (d.account) parts.push(`Account=${d.account}`);
+  return parts.join('; ') || JSON.stringify(d);
+}
+
+function dsTypePill(t) {
+  const map = { Sql: 'pill-blue', AnalysisServices: 'pill-yellow', OData: 'pill-green', Snowflake: 'pill-blue', AzureSqlDatabase: 'pill-blue', File: 'pill-gray' };
+  return `<span class="pill ${map[t] || 'pill-gray'}">${t || 'Unknown'}</span>`;
+}
+
+function renderDatasets() {
+  const rows = [];
+  allDatasets.forEach(ds => {
+    if (!ds._sources || ds._sources.length === 0) {
+      rows.push(`<tr data-ws="${ds._workspace}" data-search="${(ds.name + ds._workspace).toLowerCase()}">
+        <td><strong>${ds.name}</strong></td><td class="cell-muted">${ds._workspace}</td>
+        <td class="cell-mono">${ds.id}</td><td><span class="pill pill-gray">No sources</span></td>
+        <td class="cell-muted">—</td><td></td></tr>`);
+    } else {
+      ds._sources.forEach(src => {
+        const cs = connStr(src);
+        rows.push(`<tr data-ws="${ds._workspace}" data-search="${(ds.name + ds._workspace + cs).toLowerCase()}">
+          <td><strong>${ds.name}</strong></td><td class="cell-muted">${ds._workspace}</td>
+          <td class="cell-mono">${ds.id}</td><td>${dsTypePill(src.datasourceType)}</td>
+          <td class="cell-mono" style="font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${cs}">${cs}</td>
+          <td>${cs !== '—' ? `<button class="copy-btn" onclick="copy(\`${cs.replace(/`/g, "'")}\`)">Copy</button>` : ''}</td>
+        </tr>`);
+      });
+    }
+  });
+  document.getElementById('dsCount').textContent = allDatasets.length;
+  document.getElementById('dsTableWrap').innerHTML = `
+    <table id="dsTable">
+      <thead><tr><th>Dataset</th><th>Workspace</th><th>Dataset ID</th><th>Type</th><th>Connection String</th><th></th></tr></thead>
+      <tbody>${rows.join('') || '<tr><td colspan="6" class="empty">No datasets found</td></tr>'}</tbody>
+    </table>`;
+}
+
+function renderWorkspaces() {
+  const rows = allWorkspaces.map(w => `
+    <tr data-search="${w.name.toLowerCase()}">
+      <td><strong>${w.name}</strong></td><td class="cell-mono">${w.id}</td><td>${w.type || '—'}</td>
+      <td>${allReports.filter(r => r._workspaceId === w.id).length}</td>
+      <td>${allDatasets.filter(d => d._workspaceId === w.id).length}</td>
+      <td><button class="copy-btn" onclick="copy('${w.id}')">Copy ID</button></td>
+    </tr>`).join('');
+  document.getElementById('wsCount').textContent = allWorkspaces.length;
+  document.getElementById('wsTableWrap').innerHTML = `
+    <table id="wsTable">
+      <thead><tr><th>Workspace</th><th>ID</th><th>Type</th><th>Reports</th><th>Datasets</th><th></th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" class="empty">No workspaces found</td></tr>'}</tbody>
+    </table>`;
+}
+
+function populateWsFilters() {
+  const opts = allWorkspaces.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+  document.getElementById('wsFilterReport').innerHTML = '<option value="">All Workspaces</option>' + opts;
+  document.getElementById('wsFilterDs').innerHTML = '<option value="">All Workspaces</option>' + opts;
+}
+
+function filterTable(tableId, search) {
+  document.querySelectorAll(`#${tableId} tbody tr`).forEach(tr => {
+    tr.style.display = (tr.dataset.search || '').includes(search.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function filterByWs(tableId, ws) {
+  document.querySelectorAll(`#${tableId} tbody tr`).forEach(tr => {
+    tr.style.display = (!ws || tr.dataset.ws === ws) ? '' : 'none';
+  });
+}
+
+function copy(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const el = event.target; el.textContent = '✓ Copied';
+    setTimeout(() => el.textContent = 'Copy', 1200);
+  });
+}
+
+function exportCSV(tableId, name) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const rows = [...table.querySelectorAll('tr')].map(tr =>
+    [...tr.querySelectorAll('th,td')].map(c => `"${c.innerText.replace(/"/g, '""')}"`).join(',')
+  );
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+  a.download = `powerbi_${name}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+}
+
+function disconnect() {
+  ACCESS_TOKEN = ''; allReports = []; allDatasets = []; allWorkspaces = [];
+  clearInterval(pollInterval);
+  document.getElementById('authPanel').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('deviceBox').style.display = 'none';
+  document.getElementById('connStatus').className = 'status-badge';
+  document.getElementById('connStatus').textContent = 'Not connected';
+  document.getElementById('disconnectBtn').style.display = 'none';
+  document.getElementById('loginBtn').disabled = false;
+}
+
+function loadDemo() {
+  allWorkspaces = [{ id: 'ws-001', name: 'Finance Analytics', type: 'Group' }, { id: 'ws-002', name: 'Marketing Insights', type: 'Group' }, { id: 'ws-003', name: 'Operations', type: 'Personal' }];
+  allReports = [
+    { id: 'rpt-001', name: 'Monthly P&L Dashboard', _workspace: 'Finance Analytics', _workspaceId: 'ws-001', datasetId: 'ds-001', webUrl: '#' },
+    { id: 'rpt-002', name: 'Budget vs Actuals', _workspace: 'Finance Analytics', _workspaceId: 'ws-001', datasetId: 'ds-001', webUrl: '#' },
+    { id: 'rpt-003', name: 'Campaign Performance', _workspace: 'Marketing Insights', _workspaceId: 'ws-002', datasetId: 'ds-002', webUrl: '#' },
+    { id: 'rpt-004', name: 'Warehouse KPIs', _workspace: 'Operations', _workspaceId: 'ws-003', datasetId: 'ds-004', webUrl: '' },
+  ];
+  allDatasets = [
+    { id: 'ds-001', name: 'Finance Data Model', _workspace: 'Finance Analytics', _workspaceId: 'ws-001', _sources: [{ datasourceType: 'Sql', connectionDetails: { server: 'fin-sql.database.windows.net', database: 'FinanceDB' } }, { datasourceType: 'AzureDataLakeStorage', connectionDetails: { url: 'https://finlake.dfs.core.windows.net/data' } }] },
+    { id: 'ds-002', name: 'Marketing Dataset', _workspace: 'Marketing Insights', _workspaceId: 'ws-002', _sources: [{ datasourceType: 'Snowflake', connectionDetails: { server: 'acme.snowflakecomputing.com', database: 'MARKETING' } }] },
+    { id: 'ds-004', name: 'Ops Warehouse', _workspace: 'Operations', _workspaceId: 'ws-003', _sources: [{ datasourceType: 'Sql', connectionDetails: { server: 'ops-db.internal', database: 'Warehouse' } }] },
+  ];
+  document.getElementById('authPanel').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('connStatus').className = 'status-badge connected';
+  document.getElementById('connStatus').textContent = '⭐ Demo Mode';
+  document.getElementById('disconnectBtn').style.display = 'inline-flex';
+  renderAll();
+}
+</script>
+</body>
+</html>
